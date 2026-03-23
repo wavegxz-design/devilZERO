@@ -1,4 +1,5 @@
 import logging
+import signal
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from random import choice
@@ -24,29 +25,33 @@ def handle_proxy_list(config, proxy_file: Path, proxy_type: int, target_url: str
         proxy_type = choice([4, 5, 1])
 
     if not proxy_file.exists():
-        logger.warning("Proxy file does not exist. Downloading proxies...")
+        print_warning("Proxy file does not exist. Downloading proxies...")
         proxy_file.parent.mkdir(parents=True, exist_ok=True)
         proxies = _download_proxies(proxy_type)
         if not proxies:
-            logger.error("No proxies downloaded.")
+            print_error("No proxies downloaded.")
             return None
-        logger.info(f"Checking {len(proxies)} proxies (this may take a while)...")
+        print_info(f"Checking {len(proxies)} proxies (this may take a while)...")
         check_url = target_url or "http://httpbin.org/get"
         threads = 100
-        proxies = ProxyChecker.checkAll(proxies, timeout=5, threads=threads, url=check_url)
+        try:
+            proxies = ProxyChecker.checkAll(proxies, timeout=5, threads=threads, url=check_url)
+        except KeyboardInterrupt:
+            print_warning("\nProxy check interrupted by user. Continuing without proxies.")
+            return None
         if not proxies:
-            logger.error("Proxy check failed. No valid proxies found.")
+            print_error("Proxy check failed. No valid proxies found.")
             return None
         with open(proxy_file, 'w') as f:
             for proxy in proxies:
                 f.write(str(proxy) + "\n")
-        logger.info(f"Saved {len(proxies)} proxies to {proxy_file}")
+        print_success(f"Saved {len(proxies)} proxies to {proxy_file}")
 
     proxies = ProxyUtiles.readFromFile(proxy_file)
     if proxies:
-        logger.info(f"Loaded {len(proxies)} proxies from {proxy_file}")
+        print_info(f"Loaded {len(proxies)} proxies from {proxy_file}")
     else:
-        logger.warning("Empty proxy file.")
+        print_warning("Empty proxy file.")
     return proxies
 
 def _download_proxies(proxy_type: int) -> Set[Proxy]:
@@ -55,7 +60,7 @@ def _download_proxies(proxy_type: int) -> Set[Proxy]:
     """
     providers = [p for p in PROXY_PROVIDERS if p["type"] == proxy_type or proxy_type == 0]
     if not providers:
-        logger.warning("No proxy providers found for this type.")
+        print_warning("No proxy providers found for this type.")
         return set()
 
     all_proxies = set()
@@ -66,7 +71,7 @@ def _download_proxies(proxy_type: int) -> Set[Proxy]:
                 proxies = future.result()
                 all_proxies.update(proxies)
             except Exception as e:
-                logger.error(f"Error downloading from {futures[future]['url']}: {e}")
+                print_error(f"Error downloading from {futures[future]['url']}: {e}")
     return all_proxies
 
 def _download_single(provider) -> Set[Proxy]:
@@ -82,5 +87,5 @@ def _download_single(provider) -> Set[Proxy]:
                 proxies.add(proxy)
         return proxies
     except Exception as e:
-        logger.error(f"Failed to download proxies from {url}: {e}")
+        print_error(f"Failed to download proxies from {url}: {e}")
         return set()
