@@ -13,11 +13,9 @@ class Colors:
     UNDERLINE = '\033[4m'
 
 def clear_screen():
-    """Clear terminal screen."""
     os.system('clear' if os.name == 'posix' else 'cls')
 
 def print_banner():
-    """Print the devilZERO banner with colors."""
     banner = f"""
 {Colors.BOLD}
 {Colors.FAIL}    ██████╗ ███████╗██╗   ██╗██╗██╗     ███████╗███████╗██████╗  ██████╗{Colors.RESET}
@@ -25,7 +23,7 @@ def print_banner():
 {Colors.FAIL}    ██║  ██║█████╗  ██║   ██║██║██║     █████╗    ███╔╝ ██████╔╝██║   ██║{Colors.RESET}
 {Colors.FAIL}    ██║  ██║██╔══╝  ╚██╗ ██╔╝██║██║     ██╔══╝   ███╔╝  ██╔══██╗██║   ██║{Colors.RESET}
 {Colors.FAIL}    ██████╔╝███████╗ ╚████╔╝ ██║███████╗███████╗███████╗██║  ██║╚██████╔╝{Colors.RESET}
-{Colors.FAIL}    ╚═════╝ ╚══════╝  ╚═══╝  ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝{Colors.RESET}
+{Colors.WARNING}    ╚═════╝ ╚══════╝  ╚═══╝  ╚═╝╚══════╝╚══════╝╚══════╝╚═╝  ╚═╝ ╚═════╝{Colors.RESET}
 {Colors.WARNING}                         DDoS Testing Toolkit                         {Colors.RESET}
 {Colors.OKBLUE}                     Author: krypthane                             {Colors.RESET}
 {Colors.OKBLUE}                     GitHub: github.com/wavegxz-design               {Colors.RESET}
@@ -34,12 +32,10 @@ def print_banner():
     print(banner)
 
 def confirm_action(prompt):
-    """Ask user for confirmation (Y/n). Returns True if confirmed."""
     answer = input(f"{Colors.WARNING}{prompt} (Y/n): {Colors.RESET}").strip().lower()
     return answer in ('y', 'yes', '')
 
 def safe_input(prompt, default=None, type_func=str):
-    """Safely get user input with type conversion and default."""
     while True:
         try:
             value = input(f"{Colors.OKCYAN}{prompt}{Colors.RESET}").strip()
@@ -57,3 +53,6 @@ def print_success(msg):
 
 def print_info(msg):
     print(f"{Colors.OKBLUE}[i] {msg}{Colors.RESET}")
+
+def print_warning(msg):
+    print(f"{Colors.WARNING}[!] {msg}{Colors.RESET}")
