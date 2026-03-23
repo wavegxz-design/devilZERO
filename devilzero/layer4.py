@@ -1,5 +1,6 @@
 import socket
 import random
+import time
 from threading import Thread, Event
 from typing import List, Set, Tuple, Any
 from uuid import uuid4
@@ -162,7 +163,6 @@ class Layer4(Thread):
             username = f"{config['MCBOT']}{ProxyTools.Random.rand_str(5)}"
             password = b64encode(username.encode()).decode()[:8].title()
             Tools.send(s, Minecraft.login(self.protocolid, username))
-            import time
             time.sleep(1.5)
             Tools.send(s, Minecraft.chat(self.protocolid, f"/register {password} {password}"))
             Tools.send(s, Minecraft.chat(self.protocolid, f"/login {password}"))
