@@ -56,3 +56,6 @@ def print_info(msg):
 
 def print_warning(msg):
     print(f"{Colors.WARNING}[!] {msg}{Colors.RESET}")
+
+def is_root():
+    return os.geteuid() == 0
