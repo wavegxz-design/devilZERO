@@ -8,7 +8,8 @@ from base64 import b64encode
 from itertools import cycle
 from contextlib import suppress
 
-from PyRoxy import Proxy, ProxyTools
+from PyRoxy import Proxy, ProxyChecker, ProxyType, ProxyUtiles
+from PyRoxy import Tools as ProxyTools
 
 from .utils import Colors
 from .core import Tools, Counter, Minecraft, REQUESTS_SENT, BYTES_SEND, LOCAL_IP
