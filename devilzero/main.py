@@ -29,7 +29,8 @@ def run_layer4(host: str, port: int, method: str, threads: int, duration: int, u
     root_methods = ['SYN', 'ICMP', 'OVH-UDP', 'RDP', 'CLDAP', 'MEM', 'CHAR', 'ARD', 'NTP', 'DNS']
     if method in root_methods and not is_root():
         print_error(f"Method '{method}' requires root privileges (raw sockets).")
-        print_warning("Please run with sudo: sudo devilzero")
+        print_warning("Please run with sudo using the full path to the virtual environment's executable.")
+        print_warning("Example: sudo /path/to/venv/bin/devilzero")
         return
 
     try:
@@ -71,7 +72,6 @@ def run_layer4(host: str, port: int, method: str, threads: int, duration: int, u
     print_success(f"Attack started on {host}:{port} with method {method} for {duration} seconds.")
     event.set()
     start_time = time.time()
-    # Barra de progreso animada
     while time.time() < start_time + duration:
         elapsed = int(time.time() - start_time)
         remaining = duration - elapsed
@@ -84,7 +84,7 @@ def run_layer4(host: str, port: int, method: str, threads: int, duration: int, u
         REQUESTS_SENT.set(0)
         BYTES_SEND.set(0)
         time.sleep(1)
-    print()  # newline after progress bar
+    print()
     event.clear()
     print_success("Attack stopped.")
 
@@ -154,9 +154,9 @@ def run_tools():
         clear_screen()
         print_banner()
         print(f"\n{Colors.BOLD}{Colors.OKCYAN}Tools Menu:{Colors.RESET}")
-        print("  {0}1{1}) Ping".format(Colors.OKGREEN, Colors.RESET))
-        print("  {0}2{1}) IP Info".format(Colors.OKGREEN, Colors.RESET))
-        print("  {0}3{1}) Back to main menu".format(Colors.OKGREEN, Colors.RESET))
+        print(f"  {Colors.WARNING}1{Colors.RESET}) Ping")
+        print(f"  {Colors.WARNING}2{Colors.RESET}) IP Info")
+        print(f"  {Colors.WARNING}3{Colors.RESET}) Back to main menu")
         choice = safe_input(f"{Colors.OKGREEN}Select [1-3]{Colors.RESET}: ", default='3', type_func=str)
         if choice == '1':
             target = safe_input("IP or hostname: ", type_func=str)
@@ -167,7 +167,6 @@ def run_tools():
                                             capture_output=True, text=True, timeout=10)
                     if result.returncode == 0:
                         lines = result.stdout.splitlines()
-                        # Show first line and summary
                         if lines:
                             print(f"{Colors.OKCYAN}{lines[0]}{Colors.RESET}")
                         for line in lines:
@@ -203,14 +202,14 @@ def interactive_menu():
         print_banner()
         if not is_root():
             print_warning("Running without root privileges. Some attacks (SYN, ICMP, amplification) will not work.")
-            print_warning("For full functionality, run with: sudo devilzero")
+            print_warning("For full functionality, run with: sudo /path/to/venv/bin/devilzero")
             print()
         print(f"{Colors.BOLD}{Colors.OKCYAN}Main Menu:{Colors.RESET}")
-        print(f"  {Colors.OKGREEN}1{Colors.RESET}) Layer4 Attacks (TCP/UDP/SYN/VSE/Minecraft/etc.)")
-        print(f"  {Colors.OKGREEN}2{Colors.RESET}) Layer7 Attacks (HTTP/HTTPS Flood)")
-        print(f"  {Colors.OKGREEN}3{Colors.RESET}) Amplification Attacks (DNS/NTP/RDP/CLDAP/etc.)")
-        print(f"  {Colors.OKGREEN}4{Colors.RESET}) Tools (Ping, IP Info)")
-        print(f"  {Colors.OKGREEN}5{Colors.RESET}) Exit")
+        print(f"  {Colors.WARNING}1{Colors.RESET}) Layer4 Attacks (TCP/UDP/SYN/VSE/Minecraft/etc.)")
+        print(f"  {Colors.WARNING}2{Colors.RESET}) Layer7 Attacks (HTTP/HTTPS Flood)")
+        print(f"  {Colors.WARNING}3{Colors.RESET}) Amplification Attacks (DNS/NTP/RDP/CLDAP/etc.)")
+        print(f"  {Colors.WARNING}4{Colors.RESET}) Tools (Ping, IP Info)")
+        print(f"  {Colors.WARNING}5{Colors.RESET}) Exit")
         choice = safe_input(f"{Colors.OKGREEN}Select [1-5]{Colors.RESET}: ", default='5', type_func=str)
 
         if choice == '1':
@@ -242,7 +241,7 @@ def interactive_menu():
         elif choice == '3':
             if not is_root():
                 print_error("Amplification attacks require root privileges (raw sockets).")
-                print_warning("Please run with sudo: sudo devilzero")
+                print_warning("Please run with: sudo /path/to/venv/bin/devilzero")
                 input("\nPress Enter to continue...")
                 continue
             host = safe_input("Target IP or domain: ", type_func=str)
@@ -266,6 +265,16 @@ def interactive_menu():
             sys.exit(0)
 
 def main():
+    # Si se ejecuta como root, mostrar la ruta recomendada
+    if is_root():
+        # Intentar obtener la ruta del ejecutable real
+        import os
+        venv_bin = os.environ.get('VIRTUAL_ENV')
+        if venv_bin:
+            print_info(f"Running as root with virtual environment at: {venv_bin}")
+        else:
+            print_warning("Running as root without a virtual environment. Some modules may behave differently.")
+
     parser = argparse.ArgumentParser(description='devilZERO - DDoS Testing Toolkit')
     parser.add_argument('--version', action='version', version=f'devilZERO {__version__}')
     parser.add_argument('--layer4', nargs=4, metavar=('HOST', 'PORT', 'METHOD', 'THREADS'), help='Run Layer4 attack')
