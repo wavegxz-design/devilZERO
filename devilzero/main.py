@@ -4,11 +4,12 @@ import sys
 import threading
 import time
 import subprocess
+import os
 from pathlib import Path
 
 from .utils import (
     Colors, clear_screen, print_banner, confirm_action,
-    safe_input, print_error, print_success, print_info, print_warning, is_root, restart_as_root
+    safe_input, print_error, print_success, print_info, print_warning, is_root
 )
 from .core import REQUESTS_SENT, BYTES_SEND, Tools, Counter, __version__
 from .layer4 import Layer4
@@ -17,20 +18,85 @@ from .amplification import amplification_attack
 from .proxy import handle_proxy_list
 from . import config
 
-# Initialize counters
+# Inicializar contadores
 REQUESTS_SENT = Counter()
 BYTES_SEND = Counter()
+
+# Mapeo de alias de proxy a números
+PROXY_TYPE_MAP = {
+    'http': 1,
+    'socks4': 4,
+    'socks5': 5,
+    'random': 6,
+    'all': 0,
+    '1': 1,
+    '4': 4,
+    '5': 5,
+    '6': 6,
+    '0': 0,
+}
+
+def get_proxy_type(input_str):
+    """Convertir entrada del usuario a código de tipo de proxy."""
+    normalized = input_str.strip().lower()
+    if normalized in PROXY_TYPE_MAP:
+        return PROXY_TYPE_MAP[normalized]
+    # Si no se reconoce, devolver 0 (todos)
+    return 0
+
+def ensure_root(method_name):
+    """
+    Si el método requiere root y no se es root, intenta relanzar con sudo.
+    Devuelve True si se puede continuar (ya sea porque se es root o se relanzó con éxito),
+    False si el usuario canceló o hubo error.
+    """
+    if is_root():
+        return True
+
+    # Métodos que requieren root
+    root_methods = ['SYN', 'ICMP', 'OVH-UDP', 'RDP', 'CLDAP', 'MEM', 'CHAR', 'ARD', 'NTP', 'DNS']
+    if method_name not in root_methods:
+        return True  # No necesita root
+
+    # Ya estamos en un proceso relanzado con sudo? (evitar bucle)
+    if os.environ.get('DEVILZERO_SUDO_RUN') == '1':
+        print_error(f"El método '{method_name}' requiere root y no se pudo obtener privilegios.")
+        return False
+
+    print_warning(f"El método '{method_name}' requiere privilegios de root.")
+    print_info("Intentando relanzar con sudo...")
+
+    # Obtener la ruta completa del intérprete y del script
+    python_path = sys.executable
+    script_path = Path(__file__).resolve()
+    # Construir argumentos originales (omitimos el propio script)
+    args = sys.argv[1:] if len(sys.argv) > 1 else []
+    # Si se ejecutó sin argumentos (menú interactivo), añadimos un flag especial
+    # para que al relanzar se mantenga en el menú.
+    if not args:
+        args = ['--interactive']  # Flag especial que usaremos después
+
+    # Preparar el entorno con la variable que evita bucles
+    env = os.environ.copy()
+    env['DEVILZERO_SUDO_RUN'] = '1'
+
+    # Ejecutar sudo
+    try:
+        subprocess.run(['sudo', python_path, str(script_path)] + args, env=env, check=True)
+        sys.exit(0)  # Salir después de relanzar (el nuevo proceso continuará)
+    except subprocess.CalledProcessError:
+        print_error("No se pudo relanzar con sudo. Continuando sin privilegios.")
+        return False
+    except Exception as e:
+        print_error(f"Error al relanzar: {e}")
+        return False
 
 def run_layer4(host: str, port: int, method: str, threads: int, duration: int, use_proxy: bool = False, proxy_type: int = 0):
     """Run Layer4 attack."""
     import socket
 
-    # Métodos que requieren root
-    root_methods = ['SYN', 'ICMP', 'OVH-UDP', 'RDP', 'CLDAP', 'MEM', 'CHAR', 'ARD', 'NTP', 'DNS']
-    if method in root_methods and not is_root():
-        print_error(f"Method '{method}' requires root privileges (raw sockets).")
-        print_warning("Restarting with sudo...")
-        restart_as_root()
+    # Verificar root si el método lo requiere
+    if not ensure_root(method):
         return
 
     try:
@@ -74,7 +140,6 @@ def run_layer4(host: str, port: int, method: str, threads: int, duration: int, u
     start_time = time.time()
     while time.time() < start_time + duration:
         elapsed = int(time.time() - start_time)
-        remaining = duration - elapsed
         bar_len = 30
         filled = int(bar_len * elapsed / duration)
         bar = '█' * filled + '░' * (bar_len - filled)
@@ -90,6 +155,11 @@ def run_layer4(host: str, port: int, method: str, threads: int, duration: int, u
 
 def run_layer7(target_url: str, method: str, threads: int, duration: int, rpc: int = 1, use_proxy: bool = False, proxy_type: int = 0):
     """Run Layer7 HTTP flood."""
+    # Verificar root (si el método lo requiere, pero los métodos L7 normalmente no necesitan root)
+    # No llamamos a ensure_root porque los L7 no requieren root, pero si algún día se añade uno,
+    # se puede descomentar.
+    # if method in ['SOME_ROOT_METHOD'] and not ensure_root(method): return
+
     if not target_url.startswith(('http://', 'https://')):
         target_url = 'http://' + target_url
     try:
@@ -134,7 +204,6 @@ def run_layer7(target_url: str, method: str, threads: int, duration: int, rpc: i
     start_time = time.time()
     while time.time() < start_time + duration:
         elapsed = int(time.time() - start_time)
-        remaining = duration - elapsed
         bar_len = 30
         filled = int(bar_len * elapsed / duration)
         bar = '█' * filled + '░' * (bar_len - filled)
@@ -157,7 +226,7 @@ def run_tools():
         print(f"  {Colors.WARNING}1{Colors.RESET}) Ping")
         print(f"  {Colors.WARNING}2{Colors.RESET}) IP Info")
         print(f"  {Colors.WARNING}3{Colors.RESET}) Back to main menu")
-        choice = safe_input(f"{Colors.OKGREEN}Select [1-3]{Colors.RESET}: ", default='3', type_func=str, valid_range=['1','2','3'])
+        choice = safe_input(f"{Colors.OKGREEN}Select [1-3]{Colors.RESET}: ", default='3', type_func=str)
         if choice == '1':
             target = safe_input("IP or hostname: ", type_func=str)
             if target:
@@ -202,7 +271,7 @@ def interactive_menu():
         print_banner()
         if not is_root():
             print_warning("Running without root privileges. Some attacks (SYN, ICMP, amplification) will not work.")
-            print_warning("If you need them, the script will automatically restart with sudo when you select them.")
+            print_info("The tool will automatically ask for sudo when needed.")
             print()
         print(f"{Colors.BOLD}{Colors.OKCYAN}Main Menu:{Colors.RESET}")
         print(f"  {Colors.WARNING}1{Colors.RESET}) Layer4 Attacks (TCP/UDP/SYN/VSE/Minecraft/etc.)")
@@ -210,7 +279,7 @@ def interactive_menu():
         print(f"  {Colors.WARNING}3{Colors.RESET}) Amplification Attacks (DNS/NTP/RDP/CLDAP/etc.)")
         print(f"  {Colors.WARNING}4{Colors.RESET}) Tools (Ping, IP Info)")
         print(f"  {Colors.WARNING}5{Colors.RESET}) Exit")
-        choice = safe_input(f"{Colors.OKGREEN}Select [1-5]{Colors.RESET}: ", default='5', type_func=str, valid_range=['1','2','3','4','5'])
+        choice = safe_input(f"{Colors.OKGREEN}Select [1-5]{Colors.RESET}: ", default='5', type_func=str)
 
         if choice == '1':
             host = safe_input("Target IP or domain: ", type_func=str)
@@ -221,7 +290,8 @@ def interactive_menu():
             use_proxy = confirm_action("Use proxies?")
             proxy_type = 0
             if use_proxy:
-                proxy_type = safe_input("Proxy type (1=HTTP,4=SOCKS4,5=SOCKS5,6=RANDOM,0=ALL): ", default=0, type_func=int, valid_range=[0,1,4,5,6])
+                pt = safe_input("Proxy type (http/socks4/socks5/random/all or 1/4/5/6/0): ", default='all', type_func=str)
+                proxy_type = get_proxy_type(pt)
             run_layer4(host, port, method, threads, duration, use_proxy, proxy_type)
             input("\nPress Enter to continue...")
 
@@ -234,15 +304,12 @@ def interactive_menu():
             use_proxy = confirm_action("Use proxies?")
             proxy_type = 0
             if use_proxy:
-                proxy_type = safe_input("Proxy type (1=HTTP,4=SOCKS4,5=SOCKS5,6=RANDOM,0=ALL): ", default=0, type_func=int, valid_range=[0,1,4,5,6])
+                pt = safe_input("Proxy type (http/socks4/socks5/random/all or 1/4/5/6/0): ", default='all', type_func=str)
+                proxy_type = get_proxy_type(pt)
             run_layer7(target, method, threads, duration, rpc, use_proxy, proxy_type)
             input("\nPress Enter to continue...")
 
         elif choice == '3':
-            if not is_root():
-                print_warning("Amplification attacks require root privileges. Restarting with sudo...")
-                restart_as_root()
-                return  # restart will happen, so exit this function
             host = safe_input("Target IP or domain: ", type_func=str)
             port = safe_input("Port (default 53): ", default=53, type_func=int)
             method = safe_input("Amplification method (DNS/NTP/RDP/CLDAP/MEM/CHAR/ARD): ", default='DNS', type_func=str).upper()
@@ -264,9 +331,10 @@ def interactive_menu():
             sys.exit(0)
 
 def main():
-    # If already root, just proceed
-    # If not root and we have arguments that might require root, we could handle similarly
-    # but for simplicity, we rely on interactive menu to restart.
+    # Si se ejecutó con el flag --interactive (para el re‑lanzamiento con sudo)
+    if len(sys.argv) == 2 and sys.argv[1] == '--interactive':
+        interactive_menu()
+        return
 
     parser = argparse.ArgumentParser(description='devilZERO - DDoS Testing Toolkit')
     parser.add_argument('--version', action='version', version=f'devilZERO {__version__}')
@@ -277,32 +345,25 @@ def main():
     parser.add_argument('--info', metavar='IP', help='Get IP info')
     parser.add_argument('--duration', type=int, default=60, help='Attack duration (seconds)')
     parser.add_argument('--proxy', action='store_true', help='Use proxies')
-    parser.add_argument('--proxy-type', type=int, default=0, help='Proxy type')
+    parser.add_argument('--proxy-type', type=str, default='all', help='Proxy type (http/socks4/socks5/random/all)')
     args = parser.parse_args()
 
-    # If no arguments, run interactive menu
+    # Si no hay argumentos, lanzar el menú interactivo
     if len(sys.argv) == 1:
         interactive_menu()
         return
 
+    # Convertir proxy-type a entero
+    proxy_type = get_proxy_type(args.proxy_type)
+
     # CLI mode
     if args.layer4:
         host, port, method, threads = args.layer4
-        # Check if method requires root
-        root_methods = ['SYN', 'ICMP', 'OVH-UDP', 'RDP', 'CLDAP', 'MEM', 'CHAR', 'ARD', 'NTP', 'DNS']
-        if method.upper() in root_methods and not is_root():
-            print_warning(f"Method '{method}' requires root. Restarting with sudo...")
-            restart_as_root()
-            return
-        run_layer4(host, int(port), method.upper(), int(threads), args.duration, args.proxy, args.proxy_type)
+        run_layer4(host, int(port), method.upper(), int(threads), args.duration, args.proxy, proxy_type)
     elif args.layer7:
         url, method, threads = args.layer7
-        run_layer7(url, method.upper(), int(threads), args.duration, 1, args.proxy, args.proxy_type)
+        run_layer7(url, method.upper(), int(threads), args.duration, 1, args.proxy, proxy_type)
     elif args.amp:
-        if not is_root():
-            print_warning("Amplification attacks require root. Restarting with sudo...")
-            restart_as_root()
-            return
         host, port, method, threads, refl = args.amp
         amplification_attack(host, int(port), method.upper(), int(threads), args.duration, refl)
     elif args.ping:
