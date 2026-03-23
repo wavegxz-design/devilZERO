@@ -10,7 +10,7 @@
 
 <br>
 
-**Modular DDoS testing suite for authorized security assessments.**
+**Modular DDoS testing suite for authorized security assessments.**  
 Layer4, Layer7, Amplification attacks — all in one powerful toolkit.
 
 <br>
@@ -23,9 +23,15 @@ Layer4, Layer7, Amplification attacks — all in one powerful toolkit.
 
 ## 🔥 What is devilZERO?
 
-**devilZERO** is a comprehensive DDoS testing toolkit designed for penetration testers and security researchers. It implements multiple attack vectors across Layer4 (TCP/UDP/SYN/Minecraft), Layer7 (HTTP/HTTPS floods), and amplification techniques (DNS/NTP/RDP). The tool features a clean CLI interface with interactive menu, proxy support, and real-time statistics.
+**devilZERO** is a comprehensive DDoS testing toolkit designed for penetration testers and security researchers. It implements multiple attack vectors across:
 
-**⚠️ IMPORTANT**: This tool is for educational purposes and authorized testing only. Unauthorized use is illegal.
+- **Layer4** (TCP, UDP, SYN, Minecraft, VSE, etc.)
+- **Layer7** (HTTP/HTTPS floods with various bypass methods)
+- **Amplification** (DNS, NTP, RDP, CLDAP, etc.)
+
+The tool features a clean CLI interface, an interactive menu, proxy support, real‑time packet/byte counters, and a modular architecture. It is intended **only for authorized security assessments** and educational purposes.
+
+**⚠️ IMPORTANT**: Unauthorized use is illegal. The author is not responsible for any misuse or damage.
 
 ---
 
@@ -35,28 +41,42 @@ Layer4, Layer7, Amplification attacks — all in one powerful toolkit.
 |----------|---------|-------------|
 | 🎯 **Layer4** | TCP Flood | Connect flood with random payloads |
 | | UDP Flood | High‑rate UDP packet injection |
-| | SYN Flood | Raw TCP SYN packet storm |
+| | SYN Flood | Raw TCP SYN packet storm (requires root) |
+| | ICMP Flood | Ping flood (requires root) |
 | | Minecraft | Server ping spam with handshake |
+| | MCBOT | Automated bot login and chat flood |
 | | VSE / TS3 / FiveM | Game server query attacks |
-| | MCBOT | Automated bot login/chat flood |
-| 🌐 **Layer7** | HTTP GET/POST | Configurable request floods |
-| | CFB / CFBUAM | Cloudflare bypass methods |
-| | Slowloris | Keep‑alive connection exhaustion |
-| | XML‑RPC | WordPress pingback amplification |
-| | BOT | Search‑engine crawler simulation |
+| 🌐 **Layer7** | GET / POST | Configurable HTTP/HTTPS request floods |
+| | CFB / CFBUAM | Cloudflare‑resistant methods |
+| | BYPASS | Session‑based requests |
+| | STRESS | High‑payload JSON POST |
+| | SLOW | Slow‑rate connection keep‑alive (Slowloris) |
+| | DYN | Dynamic host header randomization |
+| | TOR | .onion via tor2web gateways |
+| | XMLRPC | WordPress pingback amplification |
+| | BOT | Crawler emulation (robots.txt + sitemap) |
+| | STOMP | Captcha challenge flooding |
 | 💥 **Amplification** | DNS / NTP / RDP | Reflection attacks with reflectors |
 | | CLDAP / MEM / CHAR | Legacy protocol amplification |
+| | ARD | Apple Remote Desktop flood |
 | 🛠️ **Utilities** | Ping | ICMP reachability check |
 | | IP Info | Geolocation and ISP lookup |
-| | Proxy Management | Auto‑download and validation |
+| | Proxy Management | Auto‑download and validation from public lists |
 | 📊 **Stats** | PPS / BPS | Real‑time packet/byte counters |
 | | Color Output | Severity‑coded terminal logs |
 
 ---
 
-## ⚡ Install
+## 📦 Install
 
-### Using Virtual Environment (Recommended for Kali)
+### Prerequisites
+- Python 3.8+
+- pip
+- (Optional) Docker
+
+### Method 1: Virtual Environment (Recommended for Kali)
+
+Kali Linux (and some other distros) enforce the `externally-managed-environment` policy. Using a virtual environment is the safest way.
 
 ```bash
 git clone https://github.com/wavegxz-design/devilZERO.git
