@@ -8,7 +8,7 @@ from PyRoxy import Proxy, ProxyChecker, ProxyType, ProxyUtiles
 from requests import get, exceptions
 
 from .config import PROXY_PROVIDERS
-from .utils import Colors
+from .utils import Colors, print_warning, print_error, print_info, print_success
 
 logger = logging.getLogger("devilZERO.proxy")
 
