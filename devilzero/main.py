@@ -3,11 +3,12 @@ import argparse
 import sys
 import threading
 import time
+import subprocess
 from pathlib import Path
 
 from .utils import (
     Colors, clear_screen, print_banner, confirm_action,
-    safe_input, print_error, print_success, print_info, print_warning
+    safe_input, print_error, print_success, print_info, print_warning, is_root
 )
 from .core import REQUESTS_SENT, BYTES_SEND, Tools, Counter, __version__
 from .layer4 import Layer4
@@ -23,6 +24,14 @@ BYTES_SEND = Counter()
 def run_layer4(host: str, port: int, method: str, threads: int, duration: int, use_proxy: bool = False, proxy_type: int = 0):
     """Run Layer4 attack."""
     import socket
+
+    # Métodos que requieren root
+    root_methods = ['SYN', 'ICMP', 'OVH-UDP', 'RDP', 'CLDAP', 'MEM', 'CHAR', 'ARD', 'NTP', 'DNS']
+    if method in root_methods and not is_root():
+        print_error(f"Method '{method}' requires root privileges (raw sockets).")
+        print_warning("Please run with sudo: sudo devilzero")
+        return
+
     try:
         host_ip = socket.gethostbyname(host)
     except Exception as e:
@@ -62,11 +71,20 @@ def run_layer4(host: str, port: int, method: str, threads: int, duration: int, u
     print_success(f"Attack started on {host}:{port} with method {method} for {duration} seconds.")
     event.set()
     start_time = time.time()
+    # Barra de progreso animada
     while time.time() < start_time + duration:
-        print(f"\r{Colors.WARNING}PPS: {Tools.humanformat(int(REQUESTS_SENT))}  BPS: {Tools.humanbytes(int(BYTES_SEND))}{Colors.RESET}", end='')
+        elapsed = int(time.time() - start_time)
+        remaining = duration - elapsed
+        bar_len = 30
+        filled = int(bar_len * elapsed / duration)
+        bar = '█' * filled + '░' * (bar_len - filled)
+        pps = Tools.humanformat(int(REQUESTS_SENT))
+        bps = Tools.humanbytes(int(BYTES_SEND))
+        print(f"\r{Colors.WARNING}[{bar}] {elapsed}s/{duration}s | PPS: {pps} | BPS: {bps}{Colors.RESET}", end='')
         REQUESTS_SENT.set(0)
         BYTES_SEND.set(0)
         time.sleep(1)
+    print()  # newline after progress bar
     event.clear()
     print_success("Attack stopped.")
 
@@ -115,10 +133,18 @@ def run_layer7(target_url: str, method: str, threads: int, duration: int, rpc: i
     event.set()
     start_time = time.time()
     while time.time() < start_time + duration:
-        print(f"\r{Colors.WARNING}Requests: {Tools.humanformat(int(REQUESTS_SENT))}  Bytes: {Tools.humanbytes(int(BYTES_SEND))}{Colors.RESET}", end='')
+        elapsed = int(time.time() - start_time)
+        remaining = duration - elapsed
+        bar_len = 30
+        filled = int(bar_len * elapsed / duration)
+        bar = '█' * filled + '░' * (bar_len - filled)
+        req = Tools.humanformat(int(REQUESTS_SENT))
+        bytes_sent = Tools.humanbytes(int(BYTES_SEND))
+        print(f"\r{Colors.WARNING}[{bar}] {elapsed}s/{duration}s | Requests: {req} | Bytes: {bytes_sent}{Colors.RESET}", end='')
         REQUESTS_SENT.set(0)
         BYTES_SEND.set(0)
         time.sleep(1)
+    print()
     event.clear()
     print_success("Attack stopped.")
 
@@ -128,21 +154,27 @@ def run_tools():
         clear_screen()
         print_banner()
         print(f"\n{Colors.BOLD}{Colors.OKCYAN}Tools Menu:{Colors.RESET}")
-        print("  1) Ping")
-        print("  2) IP Info")
-        print("  3) Back to main menu")
-        choice = safe_input("Select [1-3]: ", default='3', type_func=str)
+        print("  {0}1{1}) Ping".format(Colors.OKGREEN, Colors.RESET))
+        print("  {0}2{1}) IP Info".format(Colors.OKGREEN, Colors.RESET))
+        print("  {0}3{1}) Back to main menu".format(Colors.OKGREEN, Colors.RESET))
+        choice = safe_input(f"{Colors.OKGREEN}Select [1-3]{Colors.RESET}: ", default='3', type_func=str)
         if choice == '1':
             target = safe_input("IP or hostname: ", type_func=str)
             if target:
                 print_info(f"Pinging {target}...")
                 try:
-                    from icmplib import ping
-                    r = ping(target, count=5, interval=0.2)
-                    print(f"Address: {r.address}")
-                    print(f"Packets: {r.packets_received}/{r.packets_sent}")
-                    print(f"Avg RTT: {r.avg_rtt} ms")
-                    print(f"Status: {'ONLINE' if r.is_alive else 'OFFLINE'}")
+                    result = subprocess.run(['ping', '-c', '5', '-W', '2', target],
+                                            capture_output=True, text=True, timeout=10)
+                    if result.returncode == 0:
+                        lines = result.stdout.splitlines()
+                        # Show first line and summary
+                        if lines:
+                            print(f"{Colors.OKCYAN}{lines[0]}{Colors.RESET}")
+                        for line in lines:
+                            if "packet loss" in line or "rtt" in line or "min/avg/max" in line:
+                                print(f"{Colors.OKGREEN}{line}{Colors.RESET}")
+                    else:
+                        print_error(f"Ping failed: {result.stderr.strip()}")
                 except Exception as e:
                     print_error(str(e))
                 input("\nPress Enter to continue...")
@@ -154,10 +186,10 @@ def run_tools():
                     import requests
                     resp = requests.get(f"https://ipwhois.app/json/{target}/", timeout=10)
                     data = resp.json()
-                    print(f"Country: {data.get('country')}")
-                    print(f"City: {data.get('city')}")
-                    print(f"ISP: {data.get('isp')}")
-                    print(f"Org: {data.get('org')}")
+                    print(f"{Colors.OKCYAN}Country:{Colors.RESET} {data.get('country')}")
+                    print(f"{Colors.OKCYAN}City:{Colors.RESET} {data.get('city')}")
+                    print(f"{Colors.OKCYAN}ISP:{Colors.RESET} {data.get('isp')}")
+                    print(f"{Colors.OKCYAN}Org:{Colors.RESET} {data.get('org')}")
                 except Exception as e:
                     print_error(str(e))
                 input("\nPress Enter to continue...")
@@ -169,13 +201,17 @@ def interactive_menu():
     while True:
         clear_screen()
         print_banner()
-        print(f"\n{Colors.BOLD}{Colors.OKCYAN}Main Menu:{Colors.RESET}")
-        print("  1) Layer4 Attacks (TCP/UDP/SYN/VSE/Minecraft/etc.)")
-        print("  2) Layer7 Attacks (HTTP/HTTPS Flood)")
-        print("  3) Amplification Attacks (DNS/NTP/RDP/CLDAP/etc.)")
-        print("  4) Tools (Ping, IP Info)")
-        print("  5) Exit")
-        choice = safe_input("Select [1-5]: ", default='5', type_func=str)
+        if not is_root():
+            print_warning("Running without root privileges. Some attacks (SYN, ICMP, amplification) will not work.")
+            print_warning("For full functionality, run with: sudo devilzero")
+            print()
+        print(f"{Colors.BOLD}{Colors.OKCYAN}Main Menu:{Colors.RESET}")
+        print(f"  {Colors.OKGREEN}1{Colors.RESET}) Layer4 Attacks (TCP/UDP/SYN/VSE/Minecraft/etc.)")
+        print(f"  {Colors.OKGREEN}2{Colors.RESET}) Layer7 Attacks (HTTP/HTTPS Flood)")
+        print(f"  {Colors.OKGREEN}3{Colors.RESET}) Amplification Attacks (DNS/NTP/RDP/CLDAP/etc.)")
+        print(f"  {Colors.OKGREEN}4{Colors.RESET}) Tools (Ping, IP Info)")
+        print(f"  {Colors.OKGREEN}5{Colors.RESET}) Exit")
+        choice = safe_input(f"{Colors.OKGREEN}Select [1-5]{Colors.RESET}: ", default='5', type_func=str)
 
         if choice == '1':
             host = safe_input("Target IP or domain: ", type_func=str)
@@ -204,6 +240,11 @@ def interactive_menu():
             input("\nPress Enter to continue...")
 
         elif choice == '3':
+            if not is_root():
+                print_error("Amplification attacks require root privileges (raw sockets).")
+                print_warning("Please run with sudo: sudo devilzero")
+                input("\nPress Enter to continue...")
+                continue
             host = safe_input("Target IP or domain: ", type_func=str)
             port = safe_input("Port (default 53): ", default=53, type_func=int)
             method = safe_input("Amplification method (DNS/NTP/RDP/CLDAP/MEM/CHAR/ARD): ", default='DNS', type_func=str).upper()
@@ -254,9 +295,12 @@ def main():
         amplification_attack(host, int(port), method.upper(), int(threads), args.duration, refl)
     elif args.ping:
         try:
-            from icmplib import ping
-            r = ping(args.ping, count=5, interval=0.2)
-            print(f"Address: {r.address}\nPackets: {r.packets_received}/{r.packets_sent}\nAvg RTT: {r.avg_rtt} ms\nStatus: {'ONLINE' if r.is_alive else 'OFFLINE'}")
+            result = subprocess.run(['ping', '-c', '5', '-W', '2', args.ping],
+                                    capture_output=True, text=True, timeout=10)
+            if result.returncode == 0:
+                print(result.stdout)
+            else:
+                print_error(f"Ping failed: {result.stderr.strip()}")
         except Exception as e:
             print_error(str(e))
     elif args.info:
@@ -264,7 +308,10 @@ def main():
             import requests
             resp = requests.get(f"https://ipwhois.app/json/{args.info}/", timeout=10)
             data = resp.json()
-            print(f"Country: {data.get('country')}\nCity: {data.get('city')}\nISP: {data.get('isp')}\nOrg: {data.get('org')}")
+            print(f"Country: {data.get('country')}")
+            print(f"City: {data.get('city')}")
+            print(f"ISP: {data.get('isp')}")
+            print(f"Org: {data.get('org')}")
         except Exception as e:
             print_error(str(e))
 
