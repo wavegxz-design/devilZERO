@@ -1,5 +1,4 @@
 <div align="center">
-
 <img src="https://capsule-render.vercel.app/api?type=waving&color=0:0d1117,40:dc2626,100:7c3aed&height=200&section=header&text=devilZERO&fontSize=80&fontColor=ffffff&fontAlignY=40&desc=DDoS%20Testing%20Toolkit&descSize=22&descAlignY=62&descColor=94a3b8&animation=fadeIn" width="100%"/>
 
 <br>
@@ -57,8 +56,13 @@ Layer4, Layer7, Amplification attacks — all in one powerful toolkit.
 
 ## ⚡ Install
 
-### From GitHub
+### Using Virtual Environment (Recommended for Kali)
+
 ```bash
 git clone https://github.com/wavegxz-design/devilZERO.git
 cd devilZERO
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
 pip install -e .
+devilzero
