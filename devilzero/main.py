@@ -7,7 +7,7 @@ from pathlib import Path
 
 from .utils import (
     Colors, clear_screen, print_banner, confirm_action,
-    safe_input, print_error, print_success, print_info
+    safe_input, print_error, print_success, print_info, print_warning
 )
 from .core import REQUESTS_SENT, BYTES_SEND, Tools, Counter, __version__
 from .layer4 import Layer4
