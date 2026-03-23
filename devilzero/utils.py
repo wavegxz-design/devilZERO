@@ -35,13 +35,18 @@ def confirm_action(prompt):
     answer = input(f"{Colors.WARNING}{prompt} (Y/n): {Colors.RESET}").strip().lower()
     return answer in ('y', 'yes', '')
 
-def safe_input(prompt, default=None, type_func=str):
+def safe_input(prompt, default=None, type_func=str, valid_range=None):
+    """Safely get user input with type conversion, default, and range validation."""
     while True:
         try:
             value = input(f"{Colors.OKCYAN}{prompt}{Colors.RESET}").strip()
             if not value and default is not None:
                 return default
-            return type_func(value)
+            converted = type_func(value)
+            if valid_range and converted not in valid_range:
+                print(f"{Colors.FAIL}Invalid choice. Allowed: {valid_range}{Colors.RESET}")
+                continue
+            return converted
         except ValueError:
             print(f"{Colors.FAIL}Invalid input. Try again.{Colors.RESET}")
 
@@ -59,3 +64,10 @@ def print_warning(msg):
 
 def is_root():
     return os.geteuid() == 0
+
+def restart_as_root():
+    """Re-run the current script with sudo using the same Python interpreter."""
+    script_path = os.path.abspath(sys.argv[0])
+    python_exec = sys.executable
+    print_warning("Root privileges required. Restarting with sudo...")
+    os.execvp('sudo', ['sudo', python_exec, script_path] + sys.argv[1:])
