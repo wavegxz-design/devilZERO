@@ -11,7 +11,7 @@ from contextlib import suppress
 from PyRoxy import Proxy, ProxyChecker, ProxyType, ProxyUtiles
 from PyRoxy import Tools as ProxyTools
 
-from .utils import Colors
+from .utils import Colors, is_root, print_error, print_warning
 from .core import Tools, Counter, Minecraft, REQUESTS_SENT, BYTES_SEND, LOCAL_IP
 from .config import config
 
