@@ -1,6 +1,7 @@
 import socket
 import ssl
 import random
+import warnings
 from math import log2, trunc
 from multiprocessing import RawValue
 from re import compile
@@ -10,6 +11,7 @@ from uuid import UUID, uuid4
 from base64 import b64encode
 
 import certifi
+import requests
 from cloudscraper import create_scraper
 from icmplib import ping
 from impacket.ImpactPacket import IP, TCP, UDP, Data, ICMP
@@ -17,6 +19,11 @@ from requests import Response, Session, get, cookies
 from yarl import URL
 
 from .utils import Colors
+
+# Silence urllib3 warnings
+warnings.filterwarnings("ignore", category=requests.packages.urllib3.exceptions.InsecureRequestWarning)
+
+__version__ = '1.0.0'
 
 # Global counters
 REQUESTS_SENT = None
@@ -63,11 +70,17 @@ tor2webs = [
     's4.tor-gateways.de', 's5.tor-gateways.de'
 ]
 
-# Search engine user agents (abreviado, puedes copiar la lista completa del original)
+# Search engine user agents (short version)
 search_engine_agents = [
     "Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)",
     "Googlebot/2.1 (+http://www.googlebot.com/bot.html)",
-    # ... añade los demás del original para que funcione correctamente
+    "Mozilla/5.0 (compatible; bingbot/2.0; +http://www.bing.com/bingbot.htm)",
+    "Mozilla/5.0 (compatible; Yahoo! Slurp; http://help.yahoo.com/help/us/ysearch/slurp)",
+    "Mozilla/5.0 (compatible; YandexBot/3.0; +http://yandex.com/bots)",
+    "Mozilla/5.0 (compatible; Baiduspider/2.0; +http://www.baidu.com/search/spider.html)",
+    "DuckDuckBot/1.0; (+http://duckduckgo.com/duckduckbot.html)",
+    "facebookexternalhit/1.1 (+http://www.facebook.com/externalhit_uatext.php)",
+    "Twitterbot/1.0"
 ]
 
 class Tools:
@@ -120,7 +133,6 @@ class Tools:
 
     @staticmethod
     def dgb_solver(url, ua, pro=None):
-        from .utils import Colors
         try:
             session = Session()
             if pro:
