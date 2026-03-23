@@ -9,7 +9,8 @@ from contextlib import suppress
 import requests
 from cloudscraper import create_scraper
 from yarl import URL
-from PyRoxy import Proxy, ProxyTools
+from PyRoxy import Proxy, ProxyChecker, ProxyType, ProxyUtiles
+from PyRoxy import Tools as ProxyTools
 
 from .utils import Colors
 from .core import Tools, REQUESTS_SENT, BYTES_SEND, SSL_CTX, search_engine_agents, tor2webs
