@@ -1,0 +1,9 @@
+version: "3.9"
+services:
+  devilzero:
+    build: .
+    container_name: devilzero
+    stdin_open: true
+    tty: true
+    volumes:
+      - ./devilzero/data:/app/devilzero/data
